@@ -1,508 +1,230 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MoneyFlow - Suivi Bancaire</title>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            padding: 20px;
-        }
-        .container { max-width: 1200px; margin: 0 auto; }
-        .header { text-align: center; color: white; margin-bottom: 30px; }
-        .header h1 { font-size: 2.5em; margin-bottom: 5px; }
-        .header p { font-size: 1.1em; opacity: 0.9; }
-        
-        .dashboard { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; margin-bottom: 30px; }
-        .card { background: white; border-radius: 20px; padding: 25px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); }
-        .card h2 { color: #667eea; margin-bottom: 20px; font-size: 1.3em; }
-        
-        .balance-card { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; }
-        .balance-card h2 { color: white; opacity: 0.9; font-size: 1em; font-weight: normal; margin-bottom: 10px; }
-        .balance-amount { font-size: 3.5em; font-weight: bold; margin: 15px 0 25px 0; }
-        .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
-        .stat-box { background: rgba(255,255,255,0.15); padding: 18px; border-radius: 12px; }
-        .stat-label { font-size: 0.9em; opacity: 0.85; margin-bottom: 8px; }
-        .stat-value { font-size: 1.8em; font-weight: bold; }
-        
-        .form-group { margin-bottom: 18px; }
-        .form-group label { display: block; margin-bottom: 8px; color: #444; font-size: 0.95em; font-weight: 600; }
-        .form-group input, .form-group select { width: 100%; padding: 14px; border: 2px solid #e5e5e5; border-radius: 12px; font-size: 1em; transition: all 0.3s; }
-        .form-group input:focus, .form-group select:focus { outline: none; border-color: #667eea; box-shadow: 0 0 0 3px rgba(102,126,234,0.1); }
-        
-        .category-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
-        .category-actions { display: flex; gap: 8px; }
-        .icon-btn { background: #667eea; color: white; border: none; padding: 6px 10px; border-radius: 8px; cursor: pointer; font-size: 0.9em; transition: all 0.2s; }
-        .icon-btn:hover { background: #5568d3; transform: translateY(-1px); }
-        .icon-btn.delete { background: #e74c3c; }
-        .icon-btn.delete:hover { background: #c0392b; }
-        
-        .btn { width: 100%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; padding: 16px; border-radius: 12px; font-size: 1.05em; font-weight: 600; cursor: pointer; transition: all 0.3s; }
-        .btn:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(102,126,234,0.4); }
-        .btn:active { transform: translateY(0); }
-        
-        .budget-item { margin-bottom: 22px; padding: 18px; background: #f8f9fa; border-radius: 12px; transition: all 0.2s; }
-        .budget-item:hover { background: #f0f1f3; }
-        .budget-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; font-size: 0.95em; }
-        .budget-category { font-weight: 600; color: #333; }
-        .budget-amounts { display: flex; align-items: center; gap: 10px; }
-        .budget-bar { height: 14px; background: #e9ecef; border-radius: 10px; overflow: hidden; position: relative; }
-        .budget-fill { height: 100%; background: linear-gradient(90deg, #667eea 0%, #764ba2 100%); transition: width 0.6s ease; border-radius: 10px; }
-        .budget-fill.warning { background: linear-gradient(90deg, #f39c12 0%, #e67e22 100%); }
-        .budget-fill.danger { background: linear-gradient(90deg, #e74c3c 0%, #c0392b 100%); }
-        
-        .transaction-item { display: flex; justify-content: space-between; align-items: center; padding: 16px; border-bottom: 1px solid #f0f0f0; transition: background 0.2s; }
-        .transaction-item:hover { background: #f8f9fa; }
-        .transaction-item:last-child { border-bottom: none; }
-        .transaction-info { flex: 1; }
-        .transaction-badge { display: inline-block; padding: 5px 12px; border-radius: 20px; font-size: 0.85em; font-weight: 600; margin-bottom: 6px; }
-        .badge-income { background: #d4edda; color: #155724; }
-        .badge-expense { background: #f8d7da; color: #721c24; }
-        .transaction-desc { color: #555; margin-bottom: 4px; font-size: 0.95em; }
-        .transaction-date { color: #999; font-size: 0.85em; }
-        .transaction-amount { font-size: 1.3em; font-weight: bold; }
-        .amount-income { color: #28a745; }
-        .amount-expense { color: #dc3545; }
-        
-        .empty-state { text-align: center; padding: 50px 20px; color: #999; }
-        .empty-icon { font-size: 3.5em; margin-bottom: 15px; opacity: 0.5; }
-        
-        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 1000; align-items: center; justify-content: center; }
-        .modal.active { display: flex; }
-        .modal-content { background: white; padding: 35px; border-radius: 20px; max-width: 500px; width: 90%; box-shadow: 0 20px 60px rgba(0,0,0,0.3); }
-        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; }
-        .modal-header h3 { color: #667eea; font-size: 1.4em; }
-        .close-btn { background: none; border: none; font-size: 1.8em; cursor: pointer; color: #999; line-height: 1; }
-        .close-btn:hover { color: #333; }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MoneyFlow</title>
+  <style>
+    body {
+      font-family: "Poppins", sans-serif;
+      background-color: #f3f7fa;
+      margin: 0;
+      padding: 0;
+      text-align: center;
+    }
+    h1 {
+      background-color: #0077b6;
+      color: white;
+      padding: 20px;
+      margin: 0;
+      border-bottom-left-radius: 15px;
+      border-bottom-right-radius: 15px;
+    }
+    button {
+      background-color: #0096c7;
+      color: white;
+      border: none;
+      border-radius: 10px;
+      padding: 10px 15px;
+      margin: 5px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    button:hover {
+      background-color: #00b4d8;
+    }
+    table {
+      margin: 20px auto;
+      border-collapse: collapse;
+      width: 90%;
+      background: white;
+      border-radius: 10px;
+      box-shadow: 0 3px 6px rgba(0,0,0,0.1);
+    }
+    th, td {
+      padding: 10px;
+      border-bottom: 1px solid #ddd;
+    }
+    th {
+      background-color: #caf0f8;
+    }
+    .delete-btn {
+      background-color: #d00000;
+      border-radius: 50%;
+      padding: 6px 10px;
+    }
+    .delete-btn:hover {
+      background-color: #ff1e00;
+    }
+    input, select {
+      padding: 8px;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+      margin: 5px;
+    }
+  </style>
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <h1>💰 MoneyFlow</h1>
-            <p>Application de suivi bancaire</p>
-        </div>
+  <h1>💸 MoneyFlow</h1>
 
-        <div class="dashboard">
-            <!-- TABLEAU DE BORD -->
-            <div class="card balance-card">
-                <h2>Solde actuel</h2>
-                <div class="balance-amount" id="soldeActuel">0,00 €</div>
-                <div class="stats-grid">
-                    <div class="stat-box">
-                        <div class="stat-label">Revenus</div>
-                        <div class="stat-value" id="totalRevenus">0,00 €</div>
-                    </div>
-                    <div class="stat-box">
-                        <div class="stat-label">Dépenses</div>
-                        <div class="stat-value" id="totalDepenses">0,00 €</div>
-                    </div>
-                </div>
-            </div>
+  <div>
+    <button id="exportBtn">📤 Exporter mes données</button>
+    <button id="importBtn">📥 Importer des données</button>
+    <input type="file" id="importFile" accept=".json" style="display:none;">
+  </div>
 
-            <!-- NOUVELLE TRANSACTION -->
-            <div class="card">
-                <h2>➕ Nouvelle transaction</h2>
-                <div class="form-group">
-                    <label>Type</label>
-                    <select id="transactionType">
-                        <option value="revenu">Revenu</option>
-                        <option value="depense">Dépense</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>Montant (€)</label>
-                    <input type="number" id="transactionMontant" step="0.01" placeholder="0,00">
-                </div>
-                <div class="form-group">
-                    <div class="category-header">
-                        <label style="margin:0;">Catégorie</label>
-                        <div class="category-actions">
-                            <button class="icon-btn" onclick="ajouterCategorie()">➕</button>
-                            <button class="icon-btn delete" onclick="supprimerCategorie()">🗑️</button>
-                        </div>
-                    </div>
-                    <select id="transactionCategorie"></select>
-                </div>
-                <div class="form-group">
-                    <label>Description</label>
-                    <input type="text" id="transactionDesc" placeholder="Ex: Salaire, Courses...">
-                </div>
-                <button class="btn" onclick="ajouterTransaction()">Ajouter</button>
-            </div>
-        </div>
+  <div id="app"></div>
 
-        <!-- BUDGET MENSUEL -->
-        <div class="card">
-            <h2>📊 Budget mensuel</h2>
-            <div id="budgetListe"></div>
-        </div>
+  <script>
+    let data = JSON.parse(localStorage.getItem('moneyflow_data')) || {
+      categories: [],
+      transactions: []
+    };
 
-        <!-- HISTORIQUE -->
-        <div class="card">
-            <h2>📜 Historique</h2>
-            <div id="historiqueListe">
-                <div class="empty-state">
-                    <div class="empty-icon">💸</div>
-                    <p>Aucune transaction enregistrée</p>
-                </div>
-            </div>
-        </div>
-    </div>
+    function sauvegarder() {
+      localStorage.setItem('moneyflow_data', JSON.stringify(data));
+    }
 
-    <!-- MODAL MODIFIER BUDGET -->
-    <div id="modalBudget" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3>Modifier le budget</h3>
-                <button class="close-btn" onclick="fermerModal('modalBudget')">×</button>
-            </div>
-            <div class="form-group">
-                <label id="labelCategorieBudget">Catégorie</label>
-                <p style="color:#666;margin-bottom:15px;">Montant actuel: <strong id="montantActuelBudget">0 €</strong></p>
-            </div>
-            <div class="form-group">
-                <label>Nouveau budget (€)</label>
-                <input type="number" id="nouveauBudget" step="0.01" placeholder="0,00">
-            </div>
-            <button class="btn" onclick="mettreAJourBudget()">Mettre à jour</button>
-        </div>
-    </div>
+    function afficher() {
+      let app = document.getElementById('app');
+      app.innerHTML = '';
 
-    <!-- MODAL AJOUTER CATÉGORIE -->
-    <div id="modalAjouterCategorie" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3>➕ Ajouter une catégorie</h3>
-                <button class="close-btn" onclick="fermerModal('modalAjouterCategorie')">×</button>
-            </div>
-            <div class="form-group">
-                <label>Intitulé</label>
-                <input type="text" id="nouvelleCategorienom" placeholder="Ex: Abonnements, Vacances...">
-            </div>
-            <div class="form-group">
-                <label>Type</label>
-                <select id="nouvelleCategorieType">
-                    <option value="depense">Dépense</option>
-                    <option value="revenu">Revenu</option>
-                </select>
-            </div>
-            <button class="btn" onclick="ajouterNouvelleCategorie()">Mettre à jour</button>
-        </div>
-    </div>
+      // --- Catégories ---
+      let catDiv = document.createElement('div');
+      catDiv.innerHTML = "<h2>Catégories</h2>";
+      let catTable = document.createElement('table');
+      catTable.innerHTML = "<tr><th>Nom</th><th>Type</th><th>Action</th></tr>";
 
-    <!-- MODAL SUPPRIMER CATÉGORIES -->
-    <div id="modalSupprimerCategorie" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h3>🗑️ Supprimer des catégories</h3>
-                <button class="close-btn" onclick="fermerModal('modalSupprimerCategorie')">×</button>
-            </div>
-            <div id="listeCategoriesToDelete" style="max-height: 400px; overflow-y: auto;"></div>
-        </div>
-    </div>
+      data.categories.forEach((cat, i) => {
+        let row = document.createElement('tr');
+        row.innerHTML = `
+          <td>${cat.nom}</td>
+          <td>${cat.type}</td>
+          <td><button class='delete-btn' onclick='supprimerCategorie(${i})'>🗑️</button></td>`;
+        catTable.appendChild(row);
+      });
+      catDiv.appendChild(catTable);
 
-    <script>
-        // DONNÉES
-        var categories = [
-            'Revenus', 'Alimentation', 'Transport', 'Loisirs', 'Loyer', 
-            'Electricité', 'Assurance habitation', 'Internet', 'Telephone', 
-            'Santé', 'Epargne', 'Dettes', 'Autres'
-        ];
-        
-        var budgets = {
-            'Revenus': 0,
-            'Alimentation': 400,
-            'Transport': 200,
-            'Loisirs': 150,
-            'Loyer': 800,
-            'Electricité': 100,
-            'Assurance habitation': 50,
-            'Internet': 40,
-            'Telephone': 30,
-            'Santé': 100,
-            'Epargne': 300,
-            'Dettes': 200,
-            'Autres': 200
-        };
-        
-        var transactions = [];
-        var categorieEnCoursDeModif = null;
+      // Ajout Catégorie
+      let addCat = document.createElement('div');
+      addCat.innerHTML = `
+        <input id='nomCat' placeholder='Nom de la catégorie'>
+        <select id='typeCat'>
+          <option value='dépense'>Dépense</option>
+          <option value='recette'>Recette</option>
+        </select>
+        <button onclick='ajouterCategorie()'>Ajouter</button>`;
+      catDiv.appendChild(addCat);
 
-        // HELPERS
-        function euro(n) {
-            return n.toFixed(2).replace('.', ',') + ' €';
-        }
+      // --- Transactions ---
+      let transDiv = document.createElement('div');
+      transDiv.innerHTML = "<h2>Transactions</h2>";
+      let transTable = document.createElement('table');
+      transTable.innerHTML = "<tr><th>Nom</th><th>Montant</th><th>Catégorie</th><th>Action</th></tr>";
 
-        function sauvegarder() {
-            localStorage.setItem('moneyflow_data', JSON.stringify({
-                categories: categories,
-                budgets: budgets,
-                transactions: transactions
-            }));
-        }
+      data.transactions.forEach((t, i) => {
+        let row = document.createElement('tr');
+        row.innerHTML = `
+          <td>${t.nom}</td>
+          <td>${t.montant}</td>
+          <td>${t.categorie}</td>
+          <td><button class='delete-btn' onclick='supprimerTransaction(${i})'>🗑️</button></td>`;
+        transTable.appendChild(row);
+      });
+      transDiv.appendChild(transTable);
 
-        function charger() {
-            var data = localStorage.getItem('moneyflow_data');
-            if (data) {
-                var obj = JSON.parse(data);
-                categories = obj.categories || categories;
-                budgets = obj.budgets || budgets;
-                transactions = obj.transactions || [];
-            }
-        }
+      // Ajout transaction
+      let addTrans = document.createElement('div');
+      let options = data.categories.map(c => `<option>${c.nom}</option>`).join('');
+      addTrans.innerHTML = `
+        <input id='nomTrans' placeholder='Nom de la transaction'>
+        <input id='montantTrans' type='number' placeholder='Montant'>
+        <select id='catTrans'>${options}</select>
+        <button onclick='ajouterTransaction()'>Ajouter</button>`;
+      transDiv.appendChild(addTrans);
 
-        // CATÉGORIES
-        function mettreAJourSelectCategories() {
-            var select = document.getElementById('transactionCategorie');
-            var type = document.getElementById('transactionType').value;
-            
-            select.innerHTML = '';
-            
-            if (type === 'revenu') {
-                var opt = document.createElement('option');
-                opt.value = 'Revenus';
-                opt.textContent = 'Revenus';
-                select.appendChild(opt);
-            } else {
-                for (var i = 0; i < categories.length; i++) {
-                    if (categories[i] !== 'Revenus') {
-                        var opt = document.createElement('option');
-                        opt.value = categories[i];
-                        opt.textContent = categories[i];
-                        select.appendChild(opt);
-                    }
-                }
-            }
-        }
+      app.appendChild(catDiv);
+      app.appendChild(transDiv);
+    }
 
-        function ajouterCategorie() {
-            document.getElementById('nouvelleCategorienom').value = '';
-            document.getElementById('nouvelleCategorieType').value = 'depense';
-            document.getElementById('modalAjouterCategorie').classList.add('active');
-        }
+    function ajouterCategorie() {
+      let nom = document.getElementById('nomCat').value.trim();
+      let type = document.getElementById('typeCat').value;
+      if (!nom) return alert("Nom de catégorie manquant !");
+      data.categories.push({ nom, type });
+      sauvegarder();
+      afficher();
+    }
 
-        function ajouterNouvelleCategorie() {
-            var nom = document.getElementById('nouvelleCategorienom').value.trim();
-            var type = document.getElementById('nouvelleCategorieType').value;
-            
-            if (!nom || nom === '') {
-                alert('⚠️ Veuillez saisir un intitulé');
-                return;
-            }
-            
-            if (categories.indexOf(nom) !== -1) {
-                alert('⚠️ Cette catégorie existe déjà');
-                return;
-            }
-            
-            categories.push(nom);
-            budgets[nom] = 0;
-            
+    function ajouterTransaction() {
+      let nom = document.getElementById('nomTrans').value.trim();
+      let montant = parseFloat(document.getElementById('montantTrans').value);
+      let cat = document.getElementById('catTrans').value;
+      if (!nom || isNaN(montant)) return alert("Transaction incomplète !");
+      data.transactions.push({ nom, montant, categorie: cat });
+      sauvegarder();
+      afficher();
+    }
+
+    function supprimerCategorie(index) {
+      let catName = data.categories[index].nom;
+      if (!confirm(`Supprimer la catégorie "${catName}" et toutes les transactions associées ?`)) return;
+
+      // Supprimer transactions liées
+      data.transactions = data.transactions.filter(t => t.categorie !== catName);
+
+      // Supprimer la catégorie
+      data.categories.splice(index, 1);
+
+      sauvegarder();
+      afficher();
+    }
+
+    function supprimerTransaction(index) {
+      if (!confirm("Supprimer cette transaction ?")) return;
+      data.transactions.splice(index, 1);
+      sauvegarder();
+      afficher();
+    }
+
+    // --- Export / Import ---
+    document.getElementById('exportBtn').addEventListener('click', () => {
+      const blob = new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'moneyflow_data.json';
+      a.click();
+      URL.revokeObjectURL(url);
+    });
+
+    document.getElementById('importBtn').addEventListener('click', () => {
+      document.getElementById('importFile').click();
+    });
+
+    document.getElementById('importFile').addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        try {
+          const imported = JSON.parse(event.target.result);
+          if (imported.categories && imported.transactions) {
+            data = imported;
             sauvegarder();
-            actualiserInterface();
-            fermerModal('modalAjouterCategorie');
-            
-            alert('✓ Catégorie "' + nom + '" ajoutée !');
+            afficher();
+            alert("✅ Données importées avec succès !");
+          } else {
+            alert("Fichier invalide.");
+          }
+        } catch (err) {
+          alert("Erreur lors de l'importation.");
         }
+      };
+      reader.readAsText(file);
+    });
 
-        function supprimerCategorie() {
-            var html = '';
-            
-            for (var i = 0; i < categories.length; i++) {
-                var cat = categories[i];
-                html += '<div style="display:flex;justify-content:space-between;align-items:center;padding:15px;border-bottom:1px solid #f0f0f0;">';
-                html += '<span style="font-weight:500;">' + cat + '</span>';
-                html += '<button class="icon-btn delete" onclick="confirmerSuppressionCategorie(\'' + cat + '\')">🗑️</button>';
-                html += '</div>';
-            }
-            
-            document.getElementById('listeCategoriesToDelete').innerHTML = html;
-            document.getElementById('modalSupprimerCategorie').classList.add('active');
-        }
-
-        function confirmerSuppressionCategorie(cat) {
-            if (confirm('Supprimer la catégorie "' + cat + '" ?\n\nToutes les transactions associées seront conservées mais cette catégorie n\'apparaîtra plus dans le Budget mensuel.')) {
-                var idx = categories.indexOf(cat);
-                if (idx > -1) {
-                    categories.splice(idx, 1);
-                    delete budgets[cat];
-                    
-                    sauvegarder();
-                    actualiserInterface();
-                    fermerModal('modalSupprimerCategorie');
-                    
-                    alert('✓ Catégorie supprimée');
-                }
-            }
-        }
-
-        // TRANSACTIONS
-        function ajouterTransaction() {
-            var type = document.getElementById('transactionType').value;
-            var montant = parseFloat(document.getElementById('transactionMontant').value);
-            var categorie = document.getElementById('transactionCategorie').value;
-            var desc = document.getElementById('transactionDesc').value;
-
-            if (!montant || montant <= 0) {
-                alert('⚠️ Montant invalide');
-                return;
-            }
-
-            if (!desc || desc.trim() === '') {
-                alert('⚠️ Description obligatoire');
-                return;
-            }
-
-            var transaction = {
-                id: Date.now(),
-                type: type,
-                montant: montant,
-                categorie: categorie,
-                description: desc.trim(),
-                date: new Date().toISOString()
-            };
-
-            transactions.unshift(transaction);
-            sauvegarder();
-            actualiserInterface();
-
-            document.getElementById('transactionMontant').value = '';
-            document.getElementById('transactionDesc').value = '';
-            
-            alert('✓ Transaction ajoutée !');
-        }
-
-        function supprimerTransaction(id) {
-            if (confirm('Supprimer cette transaction ?')) {
-                for (var i = 0; i < transactions.length; i++) {
-                    if (transactions[i].id === id) {
-                        transactions.splice(i, 1);
-                        break;
-                    }
-                }
-                sauvegarder();
-                actualiserInterface();
-            }
-        }
-
-        // BUDGET
-        function ouvrirModalBudget(categorie) {
-            categorieEnCoursDeModif = categorie;
-            document.getElementById('labelCategorieBudget').textContent = categorie;
-            document.getElementById('montantActuelBudget').textContent = budgets[categorie] + ' €';
-            document.getElementById('nouveauBudget').value = budgets[categorie];
-            document.getElementById('modalBudget').classList.add('active');
-        }
-
-        function mettreAJourBudget() {
-            var nouveau = parseFloat(document.getElementById('nouveauBudget').value);
-            
-            if (nouveau >= 0 && categorieEnCoursDeModif) {
-                budgets[categorieEnCoursDeModif] = nouveau;
-                sauvegarder();
-                actualiserInterface();
-                fermerModal('modalBudget');
-                alert('✓ Budget mis à jour !');
-            } else {
-                alert('⚠️ Montant invalide');
-            }
-        }
-
-        function fermerModal(id) {
-            document.getElementById(id).classList.remove('active');
-        }
-
-        // INTERFACE
-        function actualiserInterface() {
-            // CALCULS
-            var totalRev = 0;
-            var totalDep = 0;
-            var depensesParCategorie = {};
-
-            for (var i = 0; i < transactions.length; i++) {
-                var t = transactions[i];
-                if (t.type === 'revenu') {
-                    totalRev += t.montant;
-                } else {
-                    totalDep += t.montant;
-                    depensesParCategorie[t.categorie] = (depensesParCategorie[t.categorie] || 0) + t.montant;
-                }
-            }
-
-            var solde = totalRev - totalDep;
-
-            // TABLEAU DE BORD
-            document.getElementById('soldeActuel').textContent = euro(solde);
-            document.getElementById('totalRevenus').textContent = euro(totalRev);
-            document.getElementById('totalDepenses').textContent = euro(totalDep);
-
-            // BUDGET MENSUEL
-            var budgetHTML = '';
-            for (var i = 0; i < categories.length; i++) {
-                var cat = categories[i];
-                if (cat === 'Revenus') continue;
-                
-                var depense = depensesParCategorie[cat] || 0;
-                var budget = budgets[cat] || 0;
-                var pct = budget > 0 ? Math.min((depense / budget) * 100, 100) : 0;
-                var classe = pct > 90 ? 'danger' : (pct > 70 ? 'warning' : '');
-
-                budgetHTML += '<div class="budget-item">';
-                budgetHTML += '<div class="budget-header">';
-                budgetHTML += '<div class="budget-category">' + cat + '</div>';
-                budgetHTML += '<div class="budget-amounts">';
-                budgetHTML += '<span>' + euro(depense) + ' / ' + budget + ' €</span>';
-                budgetHTML += '<button class="icon-btn" onclick="ouvrirModalBudget(\'' + cat + '\')">✏️</button>';
-                budgetHTML += '</div>';
-                budgetHTML += '</div>';
-                budgetHTML += '<div class="budget-bar">';
-                budgetHTML += '<div class="budget-fill ' + classe + '" style="width:' + pct + '%"></div>';
-                budgetHTML += '</div>';
-                budgetHTML += '</div>';
-            }
-            document.getElementById('budgetListe').innerHTML = budgetHTML;
-
-            // HISTORIQUE
-            var histoHTML = '';
-            if (transactions.length === 0) {
-                histoHTML = '<div class="empty-state"><div class="empty-icon">💸</div><p>Aucune transaction</p></div>';
-            } else {
-                for (var i = 0; i < transactions.length; i++) {
-                    var t = transactions[i];
-                    var d = new Date(t.date);
-                    var isRev = t.type === 'revenu';
-                    
-                    histoHTML += '<div class="transaction-item">';
-                    histoHTML += '<div class="transaction-info">';
-                    histoHTML += '<div class="transaction-badge ' + (isRev ? 'badge-income' : 'badge-expense') + '">' + t.categorie + '</div>';
-                    histoHTML += '<div class="transaction-desc">' + t.description + '</div>';
-                    histoHTML += '<div class="transaction-date">' + d.toLocaleDateString('fr-FR') + '</div>';
-                    histoHTML += '</div>';
-                    histoHTML += '<div style="display:flex;align-items:center;gap:12px;">';
-                    histoHTML += '<div class="transaction-amount ' + (isRev ? 'amount-income' : 'amount-expense') + '">';
-                    histoHTML += (isRev ? '+' : '-') + euro(t.montant);
-                    histoHTML += '</div>';
-                    histoHTML += '<button class="icon-btn delete" onclick="supprimerTransaction(' + t.id + ')">🗑️</button>';
-                    histoHTML += '</div>';
-                    histoHTML += '</div>';
-                }
-            }
-            document.getElementById('historiqueListe').innerHTML = histoHTML;
-
-            // SELECT CATÉGORIES
-            mettreAJourSelectCategories();
-        }
-
-        // INIT
-        charger();
-        actualiserInterface();
-        
-        document.getElementById('transactionType').onchange = mettreAJourSelectCategories;
-    </script>
+    afficher();
+  </script>
 </body>
 </html>
