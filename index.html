@@ -264,11 +264,13 @@
             select.innerHTML = '';
             
             if (type === 'revenu') {
+                // Pour les revenus, afficher seulement "Revenus"
                 var opt = document.createElement('option');
                 opt.value = 'Revenus';
                 opt.textContent = 'Revenus';
                 select.appendChild(opt);
             } else {
+                // Pour les dépenses, afficher TOUTES les catégories sauf "Revenus"
                 for (var i = 0; i < categories.length; i++) {
                     if (categories[i] !== 'Revenus') {
                         var opt = document.createElement('option');
@@ -394,8 +396,8 @@
         function ouvrirModalBudget(categorie) {
             categorieEnCoursDeModif = categorie;
             document.getElementById('labelCategorieBudget').textContent = categorie;
-            document.getElementById('montantActuelBudget').textContent = budgets[categorie] + ' €';
-            document.getElementById('nouveauBudget').value = budgets[categorie];
+            document.getElementById('montantActuelBudget').textContent = euro(budgets[categorie] || 0);
+            document.getElementById('nouveauBudget').value = budgets[categorie] || 0;
             document.getElementById('modalBudget').classList.add('active');
         }
 
@@ -441,7 +443,7 @@
             document.getElementById('totalRevenus').textContent = euro(totalRev);
             document.getElementById('totalDepenses').textContent = euro(totalDep);
 
-            // BUDGET MENSUEL
+            // BUDGET MENSUEL - CORRECTION ✅
             var budgetHTML = '';
             for (var i = 0; i < categories.length; i++) {
                 var cat = categories[i];
@@ -449,14 +451,24 @@
                 
                 var depense = depensesParCategorie[cat] || 0;
                 var budget = budgets[cat] || 0;
-                var pct = budget > 0 ? Math.min((depense / budget) * 100, 100) : 0;
+                
+                // ✅ CORRECTION: Calculer le pourcentage même si budget = 0
+                var pct = 0;
+                if (budget > 0) {
+                    pct = Math.min((depense / budget) * 100, 100);
+                } else if (depense > 0) {
+                    // Si pas de budget mais il y a des dépenses, mettre 100%
+                    pct = 100;
+                }
+                
                 var classe = pct > 90 ? 'danger' : (pct > 70 ? 'warning' : '');
 
                 budgetHTML += '<div class="budget-item">';
                 budgetHTML += '<div class="budget-header">';
                 budgetHTML += '<div class="budget-category">' + cat + '</div>';
                 budgetHTML += '<div class="budget-amounts">';
-                budgetHTML += '<span>' + euro(depense) + ' / ' + budget + ' €</span>';
+                // ✅ CORRECTION: Utiliser euro() pour les deux montants
+                budgetHTML += '<span>' + euro(depense) + ' / ' + euro(budget) + '</span>';
                 budgetHTML += '<button class="icon-btn" onclick="ouvrirModalBudget(\'' + cat + '\')">✏️</button>';
                 budgetHTML += '</div>';
                 budgetHTML += '</div>';
